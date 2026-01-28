@@ -26,8 +26,9 @@
   <arg name="user_format_file" default=""/>
 
   <arg name="instruction" default="Navigate."/>
-  <arg name="instruction_topic" default=""/>
+  <arg name="instruction_topic" default="/hsr_vlm_nav/instruction"/>
   <arg name="instruction_service" default="/hsr_vlm_nav/update_instruction"/>
+  <arg name="print_vlm_io" default="false"/>
 
   <node name="hsr_vlm_nav" pkg="hsr_openpi" type="hsr_vlm_nav.py" output="screen">
     <param name="control_hz" value="$(arg control_hz)"/>
@@ -58,5 +59,6 @@
     <param name="instruction" value="$(arg instruction)"/>
     <param name="instruction_topic" value="$(arg instruction_topic)"/>
     <param name="instruction_service" value="$(arg instruction_service)"/>
+    <param name="print_vlm_io" value="$(arg print_vlm_io)"/>
   </node>
 </launch>

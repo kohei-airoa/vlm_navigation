@@ -21,6 +21,32 @@ python3 debug_vlm.py \
 To use a specific image file, pass `--image /path/to/your.png`.
 To disable tool calling, pass `--no-function-calling`.
 
+## Deploy VLM navigation
+The deploy node `hsr_vlm_nav.py` calls the VLM internally and publishes base velocity.
+
+Start:
+```
+roslaunch hsr_openpi hsr_vlm_nav.launch
+```
+
+### Update instruction (task name)
+Topic (default):
+```
+rostopic pub /hsr_vlm_nav/instruction std_msgs/String "data: 'Go to the shelf and approach the bottle.'" -1
+```
+
+Service (if `hsr_data_msgs` is available):
+```
+rosservice call /hsr_vlm_nav/update_instruction "message: 'Go to the shelf.'"
+```
+
+### Check VLM input/output
+Enable logging with:
+```
+roslaunch hsr_openpi hsr_vlm_nav.launch print_vlm_io:=true
+```
+This prints the instruction, system/user prompts, image info, and the VLM output/tool args.
+
 ## Directory batch VLM (no LeRobot dataset)
 `datset_load.py` now loads images from a directory instead of LeRobot datasets.
 

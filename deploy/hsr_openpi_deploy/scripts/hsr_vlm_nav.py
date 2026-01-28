@@ -181,8 +181,9 @@ class VlmNavNode:
         self.use_function_calling = bool(rospy.get_param("~use_function_calling", True))
 
         self.instruction = rospy.get_param("~instruction", "Navigate.")
-        self.instruction_topic = rospy.get_param("~instruction_topic", "")
+        self.instruction_topic = rospy.get_param("~instruction_topic", "/hsr_vlm_nav/instruction")
         self.instruction_service = rospy.get_param("~instruction_service", "/hsr_vlm_nav/update_instruction")
+        self.print_vlm_io = bool(rospy.get_param("~print_vlm_io", False))
 
         prompt_root = Path(__file__).resolve().parents[3] / "text_format"
         default_system = prompt_root / "systemprompt.txt"
@@ -259,6 +260,7 @@ class VlmNavNode:
 
     def instruction_callback(self, msg: String) -> None:
         self.instruction = msg.data
+        rospy.loginfo("Instruction updated (topic): %s", self.instruction)
 
     def update_instruction_srv(self, req: StringTrigger):
         self.instruction = req.message
@@ -284,7 +286,7 @@ class VlmNavNode:
             rospy.logwarn("Failed to pick model: %s", exc)
             return False
 
-    def build_messages(self, image_url: str) -> list[dict[str, Any]]:
+    def build_messages(self, image_url: str) -> tuple[list[dict[str, Any]], str]:
         user_prompt = self.user_format.replace("{TASK}", self.instruction)
         parts = [
             {"type": "text", "text": user_prompt},
@@ -294,10 +296,38 @@ class VlmNavNode:
         if self.system_prompt:
             messages.append({"role": "system", "content": self.system_prompt})
         messages.append({"role": "user", "content": parts})
-        return messages
+        return messages, user_prompt
+
+    def log_vlm_input(self, user_prompt: str, image_url: str) -> None:
+        if not self.print_vlm_io:
+            return
+        image_info = "none"
+        if self.latest_bgr is not None:
+            image_info = f"shape={self.latest_bgr.shape}, data_url_len={len(image_url)}"
+        rospy.loginfo("VLM input instruction: %s", self.instruction)
+        rospy.loginfo("VLM input system_prompt: %s", self.system_prompt)
+        rospy.loginfo("VLM input user_prompt: %s", user_prompt)
+        rospy.loginfo("VLM input image: %s", image_info)
+
+    def log_vlm_output(self, response: dict[str, Any]) -> None:
+        if not self.print_vlm_io:
+            return
+        choices = response.get("choices", [])
+        if not choices:
+            rospy.loginfo("VLM output: %s", json.dumps(response, ensure_ascii=True))
+            return
+        message = choices[0].get("message", {})
+        tool_calls = message.get("tool_calls") or []
+        if isinstance(tool_calls, list) and tool_calls:
+            args = tool_calls[0].get("function", {}).get("arguments")
+            rospy.loginfo("VLM output tool args: %s", args)
+            return
+        content = coerce_content(message.get("content"))
+        rospy.loginfo("VLM output content: %s", content)
 
     def query_vlm(self, image_url: str) -> dict[str, Any]:
-        messages = self.build_messages(image_url)
+        messages, user_prompt = self.build_messages(image_url)
+        self.log_vlm_input(user_prompt, image_url)
         payload: dict[str, Any] = {
             "model": self.model,
             "messages": messages,
@@ -307,9 +337,11 @@ class VlmNavNode:
         if self.use_function_calling:
             payload["tools"] = [self.nav_tool]
             payload["tool_choice"] = {"type": "function", "function": {"name": "set_nav_plan"}}
-        return request_json(
+        response = request_json(
             f"{self.base_url}/chat/completions", method="POST", payload=payload, timeout=self.timeout
         )
+        self.log_vlm_output(response)
+        return response
 
     def parse_nav_plan(self, response: dict[str, Any]) -> Optional[tuple[float, float, float, float, str]]:
         choices = response.get("choices", [])
