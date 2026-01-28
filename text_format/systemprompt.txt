@@ -13,9 +13,10 @@ Navigation output:
 - theta: rotation in radians (positive = counterclockwise)
 
 Controller note:
-- The controller sends velocity at 10 Hz.
-- Your x, y, theta will be divided by 10 to form velocities.
-- Keep motions small and safe; prefer improving viewpoint or approaching the target.
+- The controller sends velocity at 10 Hz for a short burst (10 steps ≈ 1 s by default).
+- Your x, y, theta are converted to constant velocities over that burst
+  (velocity = displacement / duration).
+- Keep motions small and safe;
 
 Rules:
 - Think privately; do NOT output step-by-step reasoning.

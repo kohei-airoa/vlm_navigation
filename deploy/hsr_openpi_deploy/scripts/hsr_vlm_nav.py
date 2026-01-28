@@ -40,8 +40,9 @@ Navigation output:
 - theta: rotation in radians (positive = counterclockwise)
 
 Controller note:
-- The controller sends velocity at 10 Hz.
-- Your x, y, theta will be divided by 10 to form velocities.
+- The controller sends velocity at 10 Hz for a short burst (10 steps ≈ 1 s by default).
+- Your x, y, theta are converted to constant velocities over that burst
+  (velocity = displacement / duration).
 - Keep motions small and safe; prefer improving viewpoint or approaching the target.
 
 Rules:
@@ -159,7 +160,10 @@ class VlmNavNode:
         self.image_timeout_s = float(rospy.get_param("~image_timeout_s", 1.0))
         self.min_confidence = float(rospy.get_param("~min_confidence", 0.0))
 
-        default_scale = 1.0 / self.control_hz if self.control_hz > 0 else 0.1
+        default_duration = (
+            self.plan_steps / self.control_hz if self.control_hz > 0 and self.plan_steps > 0 else 1.0
+        )
+        default_scale = 1.0 / default_duration
         self.linear_scale = float(rospy.get_param("~linear_scale", default_scale))
         self.angular_scale = float(rospy.get_param("~angular_scale", default_scale))
 
