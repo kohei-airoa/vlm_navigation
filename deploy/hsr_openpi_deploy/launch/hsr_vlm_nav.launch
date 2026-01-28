@@ -1,0 +1,62 @@
+<?xml version="1.0"?>
+<launch>
+  <arg name="control_hz" default="10"/>
+  <arg name="plan_steps" default="10"/>
+  <arg name="plan_interval_s" default="1.0"/>
+  <arg name="image_timeout_s" default="1.0"/>
+  <arg name="image_topic" default="/hsrb/head_rgbd_sensor/rgb/image_rect_color/compressed"/>
+  <arg name="cmd_vel_topic" default="/hsrb/command_velocity"/>
+  <arg name="publish_plan_topic" default="/vlm/nav_plan"/>
+
+  <arg name="linear_scale" default="0.1"/>
+  <arg name="angular_scale" default="0.1"/>
+  <arg name="max_linear" default="0.0"/>
+  <arg name="max_angular" default="0.0"/>
+  <arg name="stop_when_idle" default="true"/>
+  <arg name="min_confidence" default="0.0"/>
+
+  <arg name="base_url" default="http://localhost:18000/v1"/>
+  <arg name="model" default=""/>
+  <arg name="max_tokens" default="128"/>
+  <arg name="temperature" default="0.2"/>
+  <arg name="timeout" default="30"/>
+  <arg name="use_function_calling" default="true"/>
+
+  <arg name="system_prompt_file" default=""/>
+  <arg name="user_format_file" default=""/>
+
+  <arg name="instruction" default="Navigate."/>
+  <arg name="instruction_topic" default=""/>
+  <arg name="instruction_service" default="/hsr_vlm_nav/update_instruction"/>
+
+  <node name="hsr_vlm_nav" pkg="hsr_openpi" type="hsr_vlm_nav.py" output="screen">
+    <param name="control_hz" value="$(arg control_hz)"/>
+    <param name="plan_steps" value="$(arg plan_steps)"/>
+    <param name="plan_interval_s" value="$(arg plan_interval_s)"/>
+    <param name="image_timeout_s" value="$(arg image_timeout_s)"/>
+    <param name="image_topic" value="$(arg image_topic)"/>
+    <param name="cmd_vel_topic" value="$(arg cmd_vel_topic)"/>
+    <param name="publish_plan_topic" value="$(arg publish_plan_topic)"/>
+
+    <param name="linear_scale" value="$(arg linear_scale)"/>
+    <param name="angular_scale" value="$(arg angular_scale)"/>
+    <param name="max_linear" value="$(arg max_linear)"/>
+    <param name="max_angular" value="$(arg max_angular)"/>
+    <param name="stop_when_idle" value="$(arg stop_when_idle)"/>
+    <param name="min_confidence" value="$(arg min_confidence)"/>
+
+    <param name="base_url" value="$(arg base_url)"/>
+    <param name="model" value="$(arg model)"/>
+    <param name="max_tokens" value="$(arg max_tokens)"/>
+    <param name="temperature" value="$(arg temperature)"/>
+    <param name="timeout" value="$(arg timeout)"/>
+    <param name="use_function_calling" value="$(arg use_function_calling)"/>
+
+    <param name="system_prompt_file" value="$(arg system_prompt_file)"/>
+    <param name="user_format_file" value="$(arg user_format_file)"/>
+
+    <param name="instruction" value="$(arg instruction)"/>
+    <param name="instruction_topic" value="$(arg instruction_topic)"/>
+    <param name="instruction_service" value="$(arg instruction_service)"/>
+  </node>
+</launch>

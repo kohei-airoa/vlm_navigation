@@ -1,0 +1,54 @@
+version: "2.4"
+
+################################################################################
+services:
+  deep:
+    image: hsr_openpi:${DEEP_IMAGE_TAG:-train}   # タグによる切り替え：DEEP_IMAGE_TAG が未設定なら train を使用
+    hostname: ${HOSTNAME}
+    container_name: ${CONTAINER}
+    runtime: nvidia
+    privileged: true
+    environment:
+      # Display X Server GUI.
+      - DISPLAY=${DISPLAY}
+      - QT_X11_NO_MITSHM=1
+      # Configure Nvidia Docker interface.
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=all
+      - NVIDIA_REQUIRE_CUDA=cuda>=11.0
+  # Cache paths (persist across runs via mounted volume)
+      - OPENPI_CACHE_ROOT=/home/cache
+      - UV_CACHE_DIR=/home/cache/uv-cache
+      - UV_DATA_DIR=/home/cache/uv-data
+      - UV_PYTHON_DIR=/home/cache/uv-python
+      - XDG_DATA_HOME=/home/cache/uv-data
+      - OPENPI_DATA_HOME=/home/cache/openpi_cache
+      - HF_HOME=/home/cache/huggingface_home
+      - TMPDIR=/home/cache/tmp
+      - XDG_CACHE_HOME=/home/cache/cache
+      - HF_LEROBOT_HOME=/home/openpi/datasets
+    user: 0:0
+    build:
+      context: ../
+      dockerfile: ${DEEP_DOCKERFILE:-./docker/Dockerfile.train}
+    shm_size: '16gb'
+    volumes:
+      # Map repository sources.
+      - ./scripts:/home/docker_scripts
+      - ../:/home/openpi
+  # Persist caches across container restarts
+      - ${DEEP_CACHE_ROOT_HOST}:/home/cache
+      - ${DEEP_DATASET_PATH}:/home/datasets
+      # Grant display access to X Server.
+      - /tmp/.X11-unix:/tmp/.X11-unix
+      # rosのためのパッケージのマウント
+      - ../deploy/hsr_data_collection/hsr_data_msgs:/root/catkin_ws/src/hsr_data_msgs
+      - ../deploy/hsr_data_collection/hsr_data_collection:/root/catkin_ws/src/hsr_data_collection
+      - ../deploy/hsr_openpi_deploy:/root/catkin_ws/src/hsr_openpi_deploy
+      # 権限を一致させる
+      - /etc/passwd:/etc/passwd:ro
+      - /etc/group:/etc/group:ro
+      - /dev/:/dev/
+    working_dir: /home/openpi
+    network_mode: host
+    command: /home/docker_scripts/initialize-docker-container.sh

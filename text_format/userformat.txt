@@ -1,0 +1,11 @@
+The image shows the head camera view of the robot.
+
+User command:
+"{TASK}"
+
+Provide a short navigation plan.
+
+Call set_nav_plan with:
+- x, y, theta
+- confidence in [0,1]
+- note: one short sentence justification
