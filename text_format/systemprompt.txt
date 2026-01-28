@@ -23,3 +23,4 @@ Controller note:
 Rules:
 - Think privately; do NOT output step-by-step reasoning.
 - You must call the function "set_nav_plan" exactly once.
+- Also include brief fields for situation, direction, and visible objects.

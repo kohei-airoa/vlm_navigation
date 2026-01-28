@@ -48,6 +48,7 @@ Controller note:
 Rules:
 - Think privately; do NOT output step-by-step reasoning.
 - You must call the function "set_nav_plan" exactly once.
+ - Also include brief fields for situation, direction, and visible objects.
 """.strip()
 
 DEFAULT_USER_FORMAT = """
@@ -61,6 +62,9 @@ Provide a short navigation plan.
 Call set_nav_plan with:
 - x, y, theta
 - confidence in [0,1]
+- situation: one short sentence about the current scene
+- direction: which way the base should go (forward/left/right/rotate)
+- objects: short list of visible objects
 - note: one short sentence justification
 """.strip()
 
@@ -108,6 +112,26 @@ def coerce_content(content: Any) -> str:
 def read_text(path: Path) -> str:
     with open(path, "r", encoding="utf-8") as f:
         return f.read()
+
+
+def resolve_text_format_dir() -> Path:
+    here = Path(__file__).resolve()
+    candidates = [
+        here.parents[3] / "text_format",
+        here.parents[2] / "text_format",
+    ]
+    try:
+        import rospkg  # type: ignore
+
+        pkg_path = Path(rospkg.RosPack().get_path("hsr_openpi"))
+        candidates.append(pkg_path.parent / "text_format")
+        candidates.append(pkg_path / "text_format")
+    except Exception:
+        pass
+    for candidate in candidates:
+        if candidate.exists():
+            return candidate
+    return candidates[0]
 
 
 def image_to_data_url(bgr: np.ndarray) -> str:
@@ -192,7 +216,7 @@ class VlmNavNode:
         self.print_cmd_vel_interval = float(rospy.get_param("~print_cmd_vel_interval", 0.0))
         self.last_cmd_vel_log = rospy.Time(0)
 
-        prompt_root = Path(__file__).resolve().parents[3] / "text_format"
+        prompt_root = resolve_text_format_dir()
         default_system = prompt_root / "systemprompt.txt"
         default_user = prompt_root / "userformat.txt"
 
@@ -241,6 +265,13 @@ class VlmNavNode:
                         "y": {"type": "number", "description": "Left/right displacement in meters."},
                         "theta": {"type": "number", "description": "Rotation in radians (CCW positive)."},
                         "confidence": {"type": "number", "minimum": 0, "maximum": 1},
+                        "situation": {"type": "string", "description": "Short description of the current scene."},
+                        "direction": {"type": "string", "description": "Which way the base should move."},
+                        "objects": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                            "description": "Visible objects (short list).",
+                        },
                         "note": {"type": "string"},
                     },
                     "required": ["x", "y", "theta", "confidence", "note"],
@@ -350,7 +381,9 @@ class VlmNavNode:
         self.log_vlm_output(response)
         return response
 
-    def parse_nav_plan(self, response: dict[str, Any]) -> Optional[tuple[float, float, float, float, str]]:
+    def parse_nav_plan(
+        self, response: dict[str, Any]
+    ) -> Optional[tuple[float, float, float, float, str, Optional[str], Optional[str], list[str]]]:
         choices = response.get("choices", [])
         if not choices:
             return None
@@ -384,10 +417,23 @@ class VlmNavNode:
             theta = float(data.get("theta", 0.0))
             confidence = float(data.get("confidence", 0.0))
             note = str(data.get("note", ""))
+            situation = data.get("situation")
+            direction = data.get("direction")
+            objects = data.get("objects", [])
         except Exception:
             return None
 
-        return x, y, theta, confidence, note
+        if situation is not None:
+            situation = str(situation)
+        if direction is not None:
+            direction = str(direction)
+        if isinstance(objects, str):
+            objects = [objects]
+        if not isinstance(objects, list):
+            objects = []
+        objects = [str(obj) for obj in objects if str(obj)]
+
+        return x, y, theta, confidence, note, situation, direction, objects
 
     def plan_to_twist(self, plan: Pose2D) -> Twist:
         twist = Twist()
@@ -413,13 +459,30 @@ class VlmNavNode:
         twist.angular.z = wz
         return twist
 
-    def accept_plan(self, x: float, y: float, theta: float, confidence: float, note: str) -> None:
+    def accept_plan(
+        self,
+        x: float,
+        y: float,
+        theta: float,
+        confidence: float,
+        note: str,
+        situation: Optional[str],
+        direction: Optional[str],
+        objects: list[str],
+    ) -> None:
         plan = Pose2D(x=x, y=y, theta=theta)
         self.current_twist = self.plan_to_twist(plan)
         self.remaining_steps = max(self.plan_steps, 1)
         if self.plan_pub:
             self.plan_pub.publish(plan)
         rospy.loginfo("VLM plan: x=%.3f y=%.3f th=%.3f conf=%.2f note=%s", x, y, theta, confidence, note)
+        if situation or direction or objects:
+            rospy.loginfo(
+                "VLM context: situation=%s direction=%s objects=%s",
+                situation or "",
+                direction or "",
+                ", ".join(objects) if objects else "",
+            )
 
     def maybe_log_cmd_vel(self, twist: Twist) -> None:
         if not self.print_cmd_vel:
@@ -460,11 +523,11 @@ class VlmNavNode:
         if plan is None:
             rospy.logwarn("VLM response missing plan")
             return
-        x, y, theta, confidence, note = plan
+        x, y, theta, confidence, note, situation, direction, objects = plan
         if confidence < self.min_confidence:
             rospy.logwarn("VLM plan below confidence threshold: %.2f", confidence)
             return
-        self.accept_plan(x, y, theta, confidence, note)
+        self.accept_plan(x, y, theta, confidence, note, situation, direction, objects)
 
     def step(self) -> None:
         if self.remaining_steps > 0:

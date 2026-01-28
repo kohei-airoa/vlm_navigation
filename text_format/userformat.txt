@@ -8,4 +8,7 @@ Provide a short navigation plan.
 Call set_nav_plan with:
 - x, y, theta
 - confidence in [0,1]
+- situation: one short sentence about the current scene
+- direction: which way the base should go (forward/left/right/rotate)
+- objects: short list of visible objects
 - note: one short sentence justification
