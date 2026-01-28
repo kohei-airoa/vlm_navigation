@@ -184,6 +184,9 @@ class VlmNavNode:
         self.instruction_topic = rospy.get_param("~instruction_topic", "/hsr_vlm_nav/instruction")
         self.instruction_service = rospy.get_param("~instruction_service", "/hsr_vlm_nav/update_instruction")
         self.print_vlm_io = bool(rospy.get_param("~print_vlm_io", False))
+        self.print_cmd_vel = bool(rospy.get_param("~print_cmd_vel", False))
+        self.print_cmd_vel_interval = float(rospy.get_param("~print_cmd_vel_interval", 0.0))
+        self.last_cmd_vel_log = rospy.Time(0)
 
         prompt_root = Path(__file__).resolve().parents[3] / "text_format"
         default_system = prompt_root / "systemprompt.txt"
@@ -362,6 +365,14 @@ class VlmNavNode:
         data = safe_json_load(args)
         if not isinstance(data, dict):
             return None
+        if "arguments" in data and not {"x", "y", "theta"}.issubset(data.keys()):
+            inner = data.get("arguments")
+            if isinstance(inner, dict):
+                data = inner
+            else:
+                nested = safe_json_load(inner)
+                if isinstance(nested, dict):
+                    data = nested
 
         try:
             x = float(data.get("x", 0.0))
@@ -406,6 +417,21 @@ class VlmNavNode:
             self.plan_pub.publish(plan)
         rospy.loginfo("VLM plan: x=%.3f y=%.3f th=%.3f conf=%.2f note=%s", x, y, theta, confidence, note)
 
+    def maybe_log_cmd_vel(self, twist: Twist) -> None:
+        if not self.print_cmd_vel:
+            return
+        if self.print_cmd_vel_interval > 0:
+            now = rospy.Time.now()
+            if (now - self.last_cmd_vel_log).to_sec() < self.print_cmd_vel_interval:
+                return
+            self.last_cmd_vel_log = now
+        rospy.loginfo(
+            "cmd_vel: x=%.3f y=%.3f th=%.3f",
+            twist.linear.x,
+            twist.linear.y,
+            twist.angular.z,
+        )
+
     def maybe_request_plan(self) -> None:
         now = rospy.Time.now()
         if (now - self.last_request_time).to_sec() < self.plan_interval_s:
@@ -438,6 +464,7 @@ class VlmNavNode:
 
     def step(self) -> None:
         if self.remaining_steps > 0:
+            self.maybe_log_cmd_vel(self.current_twist)
             self.cmd_pub.publish(self.current_twist)
             self.remaining_steps -= 1
             return
@@ -445,12 +472,15 @@ class VlmNavNode:
         self.maybe_request_plan()
 
         if self.remaining_steps > 0:
+            self.maybe_log_cmd_vel(self.current_twist)
             self.cmd_pub.publish(self.current_twist)
             self.remaining_steps -= 1
             return
 
         if self.stop_when_idle:
-            self.cmd_pub.publish(Twist())
+            stop = Twist()
+            self.maybe_log_cmd_vel(stop)
+            self.cmd_pub.publish(stop)
 
     def spin(self) -> None:
         while not rospy.is_shutdown():

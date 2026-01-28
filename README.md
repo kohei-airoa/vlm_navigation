@@ -47,6 +47,20 @@ roslaunch hsr_openpi hsr_vlm_nav.launch print_vlm_io:=true
 ```
 This prints the instruction, system/user prompts, image info, and the VLM output/tool args.
 
+### Check commanded base velocity
+To see the velocity commands sent to HSR:
+```
+rostopic echo /hsrb/command_velocity
+```
+Or print them from the node:
+```
+roslaunch hsr_openpi hsr_vlm_nav.launch print_cmd_vel:=true
+```
+You can throttle the log (seconds) if needed:
+```
+roslaunch hsr_openpi hsr_vlm_nav.launch print_cmd_vel:=true print_cmd_vel_interval:=1.0
+```
+
 ## Directory batch VLM (no LeRobot dataset)
 `datset_load.py` now loads images from a directory instead of LeRobot datasets.
 

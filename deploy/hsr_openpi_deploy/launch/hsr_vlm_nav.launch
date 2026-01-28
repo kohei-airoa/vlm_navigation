@@ -29,6 +29,8 @@
   <arg name="instruction_topic" default="/hsr_vlm_nav/instruction"/>
   <arg name="instruction_service" default="/hsr_vlm_nav/update_instruction"/>
   <arg name="print_vlm_io" default="false"/>
+  <arg name="print_cmd_vel" default="false"/>
+  <arg name="print_cmd_vel_interval" default="0.0"/>
 
   <node name="hsr_vlm_nav" pkg="hsr_openpi" type="hsr_vlm_nav.py" output="screen">
     <param name="control_hz" value="$(arg control_hz)"/>
@@ -60,5 +62,7 @@
     <param name="instruction_topic" value="$(arg instruction_topic)"/>
     <param name="instruction_service" value="$(arg instruction_service)"/>
     <param name="print_vlm_io" value="$(arg print_vlm_io)"/>
+    <param name="print_cmd_vel" value="$(arg print_cmd_vel)"/>
+    <param name="print_cmd_vel_interval" value="$(arg print_cmd_vel_interval)"/>
   </node>
 </launch>

@@ -98,5 +98,14 @@ To change the language instruction at runtime:
 rosservice call /hsr_openpi/update_instruction "message: 'Open the oven toaster'"
 ```
 
+To monitor the commanded base velocity:
+```bash
+rostopic echo /hsrb/command_velocity
+```
+Or enable logging in the node:
+```bash
+roslaunch hsr_openpi hsr_vlm_nav.launch print_cmd_vel:=true
+```
+
 ## 7. Start model action execution
 Press the left directional button of controller to start the action.
