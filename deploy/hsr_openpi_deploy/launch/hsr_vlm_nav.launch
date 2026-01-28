@@ -25,7 +25,7 @@
   <arg name="system_prompt_file" default=""/>
   <arg name="user_format_file" default=""/>
 
-  <arg name="instruction" default="Pick up the coffee bottle"/>
+  <arg name="instruction" default="Move in front of the coffee bottle."/>
   <arg name="instruction_topic" default="/hsr_vlm_nav/instruction"/>
   <arg name="instruction_service" default="/hsr_vlm_nav/update_instruction"/>
   <arg name="print_vlm_io" default="false"/>

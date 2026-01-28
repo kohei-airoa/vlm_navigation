@@ -17,6 +17,8 @@ Controller note:
 - Your x, y, theta are converted to constant velocities over that burst
   (velocity = displacement / duration).
 - Keep motions small and safe;
+- if you couldn't see a target object, do a small rotation to search for it.set_nav_plan(x: 0.0, y: 0.0, theta: 0.5)
+- set the target object in the center of the view. if already centered, do not rotate.
 
 Rules:
 - Think privately; do NOT output step-by-step reasoning.
